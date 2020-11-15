@@ -1,9 +1,11 @@
 %{
 #include <stdio.h>
 #include <string.h>
+#include <stdarg.h>
 
 int yylex(void);
 int yyerror(char *s);
+char *concat(int count, ...);
 extern int yylineno;
 extern char * yytext;
 
@@ -84,32 +86,35 @@ extern char * yytext;
 %type <sValue> jump_statement
 %type <sValue> begin
 
-%start begin
+%start test
 
 %%
 
-begin: external_declaration			{  }
-	| begin external_declaration	{  }
+test: begin	{ printf("%s", $1); }
+	;
+
+begin: external_declaration			{ $$ = $1; }
+	| begin external_declaration	{ $$ = $$ = concat(2, $1, $2); }
 	;
 
 external_declaration: function_definition	{ $$ = $1; }
 	| declaration							{ $$ = $1; }
 	;
 
-function_definition: declaration_specifiers declarator declaration_list compound_statement	{ char str[256] = ""; strcat(str, $1); strcat(str, " "); strcat(str, $2); strcat(str, " "); strcat(str, $3); strcat(str, " "); strcat(str, $4); $$ = str; printf("%s", $$); }
-	| declaration_specifiers declarator compound_statement									{ char str[256] = ""; strcat(str, $1); strcat(str, " "); strcat(str, $2); strcat(str, " "); strcat(str, $3); $$ = str; printf("%s", $$); }
-	| declarator declaration_list compound_statement										{ char str[256] = ""; strcat(str, $1); strcat(str, " "); strcat(str, $2); strcat(str, " "); strcat(str, $3); $$ = str; printf("%s", $$); }
-	| declarator compound_statement															{ char str[256] = ""; strcat(str, $1); strcat(str, " "); strcat(str, $2); $$ = str; printf("%s", $$); }
+function_definition: declaration_specifiers declarator declaration_list compound_statement	{ $$ = concat(4, $1, $2, $3, $4); }
+	| declaration_specifiers declarator compound_statement									{ $$ = concat(3, $1, $2, $3); }
+	| declarator declaration_list compound_statement										{ $$ = concat(3, $1, $2, $3); }
+	| declarator compound_statement															{ $$ = concat(2, $1, $2); }
 	;
 
 compound_statement: LBRACE RBRACE					{ $$ = "[]"; }
-	| LBRACE statement_list RBRACE					{ char str[256] = ""; strcat(str, "{"); strcat(str, $2); strcat(str, "}"); $$ = str; }
-	| LBRACE declaration_list RBRACE				{ char str[256] = ""; strcat(str, "{"); strcat(str, $2); strcat(str, "}"); $$ = str; }
-	| LBRACE declaration_list statement_list RBRACE	{ char str[256] = ""; strcat(str, "{"); strcat(str, $2); strcat(str, " "); strcat(str, $3); strcat(str, "}"); $$ = str; }
+	| LBRACE statement_list RBRACE					{ $$ = concat(3, "{\n", $2, "}\n"); }
+	| LBRACE declaration_list RBRACE				{ $$ = concat(3, "{\n", $2, "}\n"); }
+	| LBRACE declaration_list statement_list RBRACE	{ $$ = concat(4, "{\n", $2, $3, "}\n"); }
 	;
 
 statement_list: statement		{ $$ = $1; }
-	| statement_list statement	{ char str[256] = ""; strcat(str, $1); strcat(str, " "); strcat(str, $2); $$ = str; }
+	| statement_list statement	{ $$ = concat(2, $1, $2); }
 	;
 
 statement: compound_statement	{ $$ = $1; }
@@ -119,54 +124,54 @@ statement: compound_statement	{ $$ = $1; }
     | jump_statement			{ $$ = $1; }
 	;
 
-jump_statement: RETURN SEMICOLON	{ char str[256] = ""; strcat(str, "return"); strcat(str, ";\n"); $$ = str; }
-	| RETURN expression SEMICOLON	{ char str[256] = ""; strcat(str, "return "); strcat(str, $2); strcat(str, ";\n"); $$ = str; }
+jump_statement: RETURN SEMICOLON	{ $$ = "return;\n"; }
+	| RETURN expression SEMICOLON	{ $$ = concat(3, "return", $2, ";\n"); }
 	;
 
-iteration_statement: WHILE LPAREN expression RPAREN statement							{ char str[256] = ""; strcat(str, "while "); strcat(str, "("); strcat(str, $3); strcat(str, ")"); strcat(str, $5); $$ = str; }
-	| FOR LPAREN expression_statement expression_statement LPAREN statement				{ char str[256] = ""; strcat(str, "for "); strcat(str, "("); strcat(str, $3); strcat(str, $4); strcat(str, ")"); strcat(str, $6); $$ = str; }
-	| FOR LPAREN expression_statement expression_statement expression RPAREN statement	{ char str[256] = ""; strcat(str, "for "); strcat(str, "("); strcat(str, $3); strcat(str, $4); strcat(str, $5); strcat(str, ")"); strcat(str, $7); $$ = str; }
+iteration_statement: WHILE LPAREN expression RPAREN statement							{ $$ = concat(5, "while", "(", $3, ")", $5); }
+	| FOR LPAREN expression_statement expression_statement LPAREN statement				{ $$ = concat(6, "for", "(", $3, $4, ")", $6); }
+	| FOR LPAREN expression_statement expression_statement expression RPAREN statement	{ $$ = concat(6, "for", "(", $3, $4, $5, ")", $7); }
 	;
 
-selection_statement: IF LPAREN expression RPAREN statement	{ char str[256] = ""; strcat(str, "if "); strcat(str, "("); strcat(str, $3); strcat(str, ")"); strcat(str, $5); $$ = str; }
-	| IF LPAREN expression RPAREN statement ELSE statement  { char str[256] = ""; strcat(str, "if "); strcat(str, "("); strcat(str, $3); strcat(str, ")"); strcat(str, $5); strcat(str, "else "); strcat(str, $7); $$ = str; }         
+selection_statement: IF LPAREN expression RPAREN statement	{ $$ = concat(5, "if", "(", $3, ")", $5); }
+	| IF LPAREN expression RPAREN statement ELSE statement  { $$ = concat(7, "if", "(", $3, ")", $5, "else", $7); }         
 	;
 
 expression_statement: SEMICOLON	{ $$ = ";\n"; }
-	| expression SEMICOLON		{ char str[256] = ""; strcat(str, $1); strcat(str, ";\n"); $$ = str; }
+	| expression SEMICOLON		{ $$ = concat(2, $1, ";\n"); }
 	;
 
 declaration_list: declaration		{ $$ = $1; }
-	| declaration_list declaration	{ char str[256] = ""; strcat(str, $1); strcat(str, $2); $$ = str; }
+	| declaration_list declaration	{ $$ = concat(2, $1, $2); }
 	;
 
-declaration: declaration_specifiers SEMICOLON				{ char str[256] = ""; strcat(str, $1); strcat(str, ";\n"); $$ = str; }
-	| declaration_specifiers init_declarator_list SEMICOLON	{ char str[256] = ""; strcat(str, $1); strcat(str, " "); strcat(str, $2); strcat(str, ";\n"); $$ = str; }
+declaration: declaration_specifiers SEMICOLON				{ $$ = concat(2, $1, ";\n"); }
+	| declaration_specifiers init_declarator_list SEMICOLON	{ $$ = concat(3, $1, $2, ";\n"); }
 	;
 
 declaration_specifiers: type_specifier		{ $$ = $1; }
-	| type_specifier declaration_specifiers	{ char str[256] = ""; strcat(str, $1); strcat(str, " "); strcat(str, $2); $$ = str; }
+	| type_specifier declaration_specifiers	{ $$ = concat(2, $1, $2); }
 	;
 
 init_declarator_list: init_declarator				{ $$ = $1; }
-	| init_declarator_list COMMA init_declarator	{ char str[256] = ""; strcat(str, $1); strcat(str, ", "); strcat(str, $3); $$ = str; }
+	| init_declarator_list COMMA init_declarator	{ $$ = concat(3, $1, ", ", $3); }
 	;
 
 init_declarator: declarator			{ $$ = $1; }
-	| declarator ASSIGN initializer	{ char str[256] = ""; strcat(str, $1); strcat(str, " = "); strcat(str, $3); $$ = str; }
+	| declarator ASSIGN initializer	{ $$ = concat(3, $1, " = ", $3); }
 	;
 
 initializer: assignment_expression			{ $$ = $1; }
-	| LBRACE initializer_list RBRACE		{ char str[256] = ""; strcat(str, "{"); strcat(str, $2); strcat(str, "}"); $$ = str; }
-	| LBRACE initializer_list COMMA RBRACE	{ char str[256] = ""; strcat(str, "{"); strcat(str, $2); strcat(str, ", ") ;strcat(str, "}"); $$ = str; }
+	| LBRACE initializer_list RBRACE		{ $$ = concat(3, "{\n", $2, "}\n"); }
+	| LBRACE initializer_list COMMA RBRACE	{ $$ = concat(4, "{\n", $2, ", ", "}"); }
 	;
 
 initializer_list: initializer				{ $$ = $1; }
-	| initializer_list COMMA initializer	{ char str[256] = ""; strcat(str, $1); strcat(str, ", "); strcat(str, $3); $$ = str; }
+	| initializer_list COMMA initializer	{ $$ = concat(3, $1, ", ", $3); }
 	;
 
 assignment_expression: conditional_expression						{ $$ = $1; }
-	| unary_expression assignment_operator assignment_expression	{ char str[256] = ""; strcat(str, $1); strcat(str, " "); strcat(str, $2); strcat(str, " "); strcat(str, $3); $$ = str; }
+	| unary_expression assignment_operator assignment_expression	{ $$ = concat(3, $1, $2, $3); }
 	;
 
 assignment_operator: ASSIGN	{ $$ = "="; }
@@ -178,9 +183,9 @@ assignment_operator: ASSIGN	{ $$ = "="; }
 	;
 
 unary_expression: postfix_expression	{ $$ = $1; }
-	| INCREMENT unary_expression		{ char str[256] = ""; strcat(str, "++"); strcat(str, $2); $$ = str; }
-	| DECREMENT unary_expression		{ char str[256] = ""; strcat(str, "--"); strcat(str, $2); $$ = str; }
-	| unary_operator cast_expression	{ char str[256] = ""; strcat(str, $1); strcat(str, " "); strcat(str, $2); $$ = str; }
+	| INCREMENT unary_expression		{ $$ = concat(2, "++", $2); }
+	| DECREMENT unary_expression		{ $$ = concat(2, "--", $2); }
+	| unary_operator cast_expression	{ $$ = concat(2, $1, $2); }
 	;
 
 unary_operator: PLUS	{ $$ = "+"; }
@@ -189,122 +194,157 @@ unary_operator: PLUS	{ $$ = "+"; }
 	;
 
 cast_expression: unary_expression				{ $$ = $1; }
-	| LPAREN type_name RPAREN cast_expression	{ char str[256] = ""; strcat(str, "("); strcat(str, $2); strcat(str, ")"); strcat(str, $4); $$ = str; }
+	| LPAREN type_name RPAREN cast_expression	{ $$ = concat(4, "(", $2, ")", $4); }
 	;
 
 type_name: specifier_qualifier_list			{ $$ = $1; }
-	| specifier_qualifier_list declarator	{ char str[256] = ""; strcat(str, $1); strcat(str, " "); strcat(str, $2); $$ = str; }
+	| specifier_qualifier_list declarator	{ $$ = concat(2, $1, $2); }
 	;
 
-specifier_qualifier_list: type_specifier specifier_qualifier_list	{ char str[256] = ""; strcat(str, $1); strcat(str, " "); strcat(str, $2); $$ = str; }
+specifier_qualifier_list: type_specifier specifier_qualifier_list	{ $$ = concat(2, $1, $2); }
 	| type_specifier 												{ $$ = $1; }
 	;
 
 postfix_expression: primary_expression							{ $$ = $1; }
-	| postfix_expression LBRACKET expression RBRACKET			{ char str[256] = ""; strcat(str, $1); strcat(str, "["); strcat(str, $3); strcat(str, "]"); $$ = str; }
-	| postfix_expression LPAREN RPAREN							{ char str[256] = ""; strcat(str, $1); strcat(str, "("); strcat(str, ")"); $$ = str; }
-	| postfix_expression LPAREN argument_expression_list RPAREN	{ char str[256] = ""; strcat(str, $1); strcat(str, "("); strcat(str, $3); strcat(str, ")"); $$ = str; }
-	| postfix_expression INCREMENT								{ char str[256] = ""; strcat(str, $1); strcat(str, "++"); $$ = str; }
-	| postfix_expression DECREMENT								{ char str[256] = ""; strcat(str, $1); strcat(str, "--"); $$ = str; }
+	| postfix_expression LBRACKET expression RBRACKET			{ $$ = concat(4, $1, "[", $3, "]"); }
+	| postfix_expression LPAREN RPAREN							{ $$ = concat(3, $1, "(", ")"); }
+	| postfix_expression LPAREN argument_expression_list RPAREN	{ $$ = concat(4, $1, "(", $3, ")"); }
+	| postfix_expression INCREMENT								{ $$ = concat(2, $1, "++"); }
+	| postfix_expression DECREMENT								{ $$ = concat(2, $1, "--"); }
 	;
 
 argument_expression_list: assignment_expression				{ $$ = $1; }
-	| argument_expression_list COMMA assignment_expression	{ char str[256] = ""; strcat(str, $1); strcat(str, ", "); strcat(str, $3); $$ = str; }
+	| argument_expression_list COMMA assignment_expression	{ $$ = concat(3, $1, ", ", $3); }
 	;
 
 expression: assignment_expression				{ $$ = $1; }
-	| expression COMMA assignment_expression	{ char str[256] = ""; strcat(str, $1); strcat(str, ", "); strcat(str, $3); $$ = str; }
+	| expression COMMA assignment_expression	{ $$ = concat(3, $1, ", ", $3); }
 	;
 
 primary_expression: ID			{ $$ = $1; }
     | CONSTANT					{ $$ = $1; }
 	| STRING					{ $$ = $1; }
-	| LPAREN expression RPAREN	{ char str[256] = ""; strcat(str, "("); strcat(str, $2); strcat(str, ")"); $$ = str; }
+	| LPAREN expression RPAREN	{ $$ = concat(3, "(", $2, ")"); }
 	;
 
 conditional_expression: logical_or_expression { $$ = $1; }
     ;
 
 logical_or_expression: logical_and_expression				{ $$ = $1; }
-	| logical_or_expression OR_OP logical_and_expression	{ char str[256] = ""; strcat(str, $1); strcat(str, " || "); strcat(str, $3); $$ = str; }
+	| logical_or_expression OR_OP logical_and_expression	{ $$ = concat(3, $1, " || ", $3); }
 	;
 
 logical_and_expression: inclusive_or_expression				{ $$ = $1; }
-	| logical_and_expression AND_OP inclusive_or_expression	{ char str[256] = ""; strcat(str, $1); strcat(str, " && "); strcat(str, $3); $$ = str; }
+	| logical_and_expression AND_OP inclusive_or_expression	{ $$ = concat(3, $1, " && ", $3); }
 	;
 
 inclusive_or_expression: exclusive_or_expression			{ $$ = $1; }
-	| inclusive_or_expression OR exclusive_or_expression	{ char str[256] = ""; strcat(str, $1); strcat(str, " | "); strcat(str, $3); $$ = str; }
+	| inclusive_or_expression OR exclusive_or_expression	{ $$ = concat(3, $1, " | ", $3); }
 	;
 
 exclusive_or_expression: and_expression				{ $$ = $1; }
-	| exclusive_or_expression XOR and_expression	{ char str[256] = ""; strcat(str, $1); strcat(str, " ^ "); strcat(str, $3); $$ = str; }
+	| exclusive_or_expression XOR and_expression	{ $$ = concat(3, $1, " ^ ", $3); }
 	;
 
 and_expression: equality_expression				{ $$ = $1; }
-	| and_expression AND equality_expression	{ char str[256] = ""; strcat(str, $1); strcat(str, " & "); strcat(str, $3); $$ = str; }
+	| and_expression AND equality_expression	{ $$ = concat(3, $1, " & ", $3); }
 	;
 
 equality_expression: relational_expression				{ $$ = $1; }
-	| equality_expression EQUAL relational_expression	{ char str[256] = ""; strcat(str, $1); strcat(str, " == "); strcat(str, $3); $$ = str; }
-	| equality_expression DIFF relational_expression	{ char str[256] = ""; strcat(str, $1); strcat(str, " != "); strcat(str, $3); $$ = str; }
+	| equality_expression EQUAL relational_expression	{ $$ = concat(3, $1, " == ", $3); }
+	| equality_expression DIFF relational_expression	{ $$ = concat(3, $1, " != ", $3); }
 	;
 
 relational_expression: shift_expression							{ $$ = $1; }
-	| relational_expression LESS_THAN shift_expression			{ char str[256] = ""; strcat(str, $1); strcat(str, " < "); strcat(str, $3); $$ = str; }
-	| relational_expression MORE_THAN shift_expression			{ char str[256] = ""; strcat(str, $1); strcat(str, " > "); strcat(str, $3); $$ = str; }
-	| relational_expression LESS_EQUAL_THAN shift_expression	{ char str[256] = ""; strcat(str, $1); strcat(str, " <= "); strcat(str, $3); $$ = str; }
-	| relational_expression MORE_EQUAL_THAN shift_expression	{ char str[256] = ""; strcat(str, $1); strcat(str, " >= "); strcat(str, $3); $$ = str; }
+	| relational_expression LESS_THAN shift_expression			{ $$ = concat(3, $1, " < ", $3); }
+	| relational_expression MORE_THAN shift_expression			{ $$ = concat(3, $1, " > ", $3); }
+	| relational_expression LESS_EQUAL_THAN shift_expression	{ $$ = concat(3, $1, " <= ", $3); }
+	| relational_expression MORE_EQUAL_THAN shift_expression	{ $$ = concat(3, $1, " >= ", $3); }
 	;
 
 shift_expression: additive_expression	{ $$ = $1; }
     ;
 
 additive_expression: multiplicative_expression				{ $$ = $1; }
-	| additive_expression PLUS multiplicative_expression	{ char str[256] = ""; strcat(str, $1); strcat(str, " + "); strcat(str, $3); $$ = str; }
-	| additive_expression MINUS multiplicative_expression	{ char str[256] = ""; strcat(str, $1); strcat(str, " - "); strcat(str, $3); $$ = str; }
+	| additive_expression PLUS multiplicative_expression	{ $$ = concat(3, $1, " + ", $3); }
+	| additive_expression MINUS multiplicative_expression	{ $$ = concat(3, $1, " - ", $3); }
 	;
 
 multiplicative_expression: cast_expression				{ $$ = $1; }
-	| multiplicative_expression MULT cast_expression	{ char str[256] = ""; strcat(str, $1); strcat(str, " * "); strcat(str, $3); $$ = str; }
-	| multiplicative_expression DIV cast_expression		{ char str[256] = ""; strcat(str, $1); strcat(str, " / "); strcat(str, $3); $$ = str; }
-	| multiplicative_expression MOD cast_expression		{ char str[256] = ""; strcat(str, $1); strcat(str, " % "); strcat(str, $3); $$ = str; }
+	| multiplicative_expression MULT cast_expression	{ $$ = concat(3, $1, " * ", $3); }
+	| multiplicative_expression DIV cast_expression		{ $$ = concat(3, $1, " / ", $3); }
+	| multiplicative_expression MOD cast_expression		{ $$ = concat(3, $1, " % ", $3); }
 	;
 
-type_specifier: VOID	{ $$ = "void"; }
-	| CHAR				{ $$ = "char"; }
-	| INT 				{ $$ = "int"; }
-	| FLOAT				{ $$ = "float"; }
+type_specifier: VOID	{ $$ = "void "; }
+	| CHAR				{ $$ = "char "; }
+	| INT 				{ $$ = "int "; }
+	| FLOAT				{ $$ = "float "; }
 	;
 
 declarator: direct_declarator { $$ = $1; }
 	;
 
 direct_declarator: ID											{ $$ = $1; }
-	| LPAREN declarator RPAREN									{ char str[256] = ""; strcat(str, "("); strcat(str, $2); strcat(str, ")"); $$ = str; }
-	| direct_declarator LBRACKET constant_expression RBRACKET	{ char str[256] = ""; strcat(str, $1); strcat(str, "["); strcat(str, $3); strcat(str, "]"); $$ = str; }
-	| direct_declarator LBRACKET RBRACKET						{ char str[256] = ""; strcat(str, $1); strcat(str, "["); strcat(str, "]"); $$ = str; }
-	| direct_declarator LPAREN parameter_list RPAREN 			{ char str[256] = ""; strcat(str, $1); strcat(str, "("); strcat(str, $3); strcat(str, ")"); $$ = str; }
-	| direct_declarator LPAREN identifier_list RPAREN			{ char str[256] = ""; strcat(str, $1); strcat(str, "("); strcat(str, $3); strcat(str, ")"); $$ = str; }
-	| direct_declarator LPAREN RPAREN							{ char str[256] = ""; strcat(str, $1); strcat(str, "("); strcat(str, ")"); $$ = str; }
+	| LPAREN declarator RPAREN									{ $$ = concat(3, "(", $2, ")"); }
+	| direct_declarator LBRACKET constant_expression RBRACKET	{ $$ = concat(4, $1, "[", $3, "]"); }
+	| direct_declarator LBRACKET RBRACKET						{ $$ = concat(3, $1, "[", "]"); }
+	| direct_declarator LPAREN parameter_list RPAREN 			{ $$ = concat(4, $1, "(", $3, ")"); }
+	| direct_declarator LPAREN identifier_list RPAREN			{ $$ = concat(4, $1, "(", $3, ")"); }
+	| direct_declarator LPAREN RPAREN							{ $$ = concat(3, $1, "(", ")"); }
 	;
 
 constant_expression: conditional_expression	{ $$ = $1; }
 	;
 
 parameter_list: parameter_declaration				{ $$ = $1; }
-	| parameter_list COMMA parameter_declaration	{ char str[256] = ""; strcat(str, $1); strcat(str, ", "); strcat(str, $3); $$ = str; }
+	| parameter_list COMMA parameter_declaration	{ $$ = concat(3, $1, ", ", $3); }
 	;
 
-parameter_declaration: declaration_specifiers declarator	{ char str[256] = ""; strcat(str, $1); strcat(str, " "); strcat(str, $2); $$ = str; }
+parameter_declaration: declaration_specifiers declarator	{ $$ = concat(2, $1, $2); }
 	| declaration_specifiers								{ $$ = $1; }
 	;
 
 identifier_list: ID				{ $$ = $1; }
-	| identifier_list COMMA ID	{ char str[256] = ""; strcat(str, $1); strcat(str, ", "); strcat(str, $3); $$ = str; }
+	| identifier_list COMMA ID	{ $$ = concat(3, $1, ", ", $3); }
 	;
 
 %%
+
+char *concat(int count, ...)
+{
+    va_list ap;
+    size_t  len = 0;
+
+    if (count < 1)
+        return NULL;
+
+    // First, measure the total length required.
+    va_start(ap, count);
+    for (int i=0; i < count; i++) {
+        const char *s = va_arg(ap, char *);
+        len += strlen(s);
+    }
+    va_end(ap);
+
+    // Allocate return buffer.
+    char *ret = malloc(len + 1);
+    if (ret == NULL)
+        return NULL;
+
+    // Concatenate all the strings into the return buffer.
+    char *dst = ret;
+    va_start(ap, count);
+    for (int i=0; i < count; i++) {
+        const char *src = va_arg(ap, char *);
+
+        // This loop is a strcpy.
+        while (*dst++ = *src++);
+        dst--;
+    }
+    va_end(ap);
+    return ret;
+}
 
 int main (void) {
 	return yyparse();

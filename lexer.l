@@ -26,16 +26,16 @@ exp			                        [Ee][+-]?{digit}+
 "*/"                                { COMMENT = 0; }
 "//".*                              {}
 
-{digit}+    				        { if(!COMMENT) return (CONSTANT); } /*INT*/
-({digit}+)\.({digit}+) 			    { if(!COMMENT) return (CONSTANT); } /*FLOAT*/
-0[xX]{hex}+{ul}?			        { if(!COMMENT) return (CONSTANT); } /*FLOAT*/
-{digit}+{ul}?				        { if(!COMMENT) return (CONSTANT); } /*FLOAT*/
-'(\\.|[^\\'])+'				        { if(!COMMENT) return (CONSTANT); } /*FLOAT*/
-{digit}+{exp}{fl}?			        { if(!COMMENT) return (CONSTANT); } /*FLOAT*/
-{digit}*"."{digit}+({exp})?{fl}?	{ if(!COMMENT) return (CONSTANT); } /*FLOAT*/
-{digit}+"."{digit}*({exp})?{fl}?	{ if(!COMMENT) return (CONSTANT); } /*FLOAT*/
+{digit}+    				        { if(!COMMENT) { yylval.sValue = strdup(yytext); return (CONSTANT); } } /*INT*/
+({digit}+)\.({digit}+) 			    { if(!COMMENT) { yylval.sValue = strdup(yytext); return (CONSTANT); } } /*FLOAT*/
+0[xX]{hex}+{ul}?			        { if(!COMMENT) { yylval.sValue = strdup(yytext); return (CONSTANT); } } /*FLOAT*/
+{digit}+{ul}?				        { if(!COMMENT) { yylval.sValue = strdup(yytext); return (CONSTANT); } } /*FLOAT*/
+'(\\.|[^\\'])+'				        { if(!COMMENT) { yylval.sValue = strdup(yytext); return (CONSTANT); } } /*FLOAT*/
+{digit}+{exp}{fl}?			        { if(!COMMENT) { yylval.sValue = strdup(yytext); return (CONSTANT); } } /*FLOAT*/
+{digit}*"."{digit}+({exp})?{fl}?	{ if(!COMMENT) { yylval.sValue = strdup(yytext); return (CONSTANT); } } /*FLOAT*/
+{digit}+"."{digit}*({exp})?{fl}?	{ if(!COMMENT) { yylval.sValue = strdup(yytext); return (CONSTANT); } } /*FLOAT*/
 
-{alpha}?\"(\\.|[^\\"])*\"		    { if(!COMMENT) return (STRING); } /*STRING*/
+{alpha}?\"(\\.|[^\\"])*\"		    { if(!COMMENT) { yylval.sValue = strdup(yytext); return (STRING); } } /*STRING*/
 
 \{                                  { if(!COMMENT) return (LBRACE); }
 \}                                  { if(!COMMENT) return (RBRACE); }
