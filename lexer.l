@@ -12,15 +12,12 @@ alpha 			                    [A-Za-z_]
 fl			                        (f|F|l|L)
 ul			                        (u|U|l|L)*
 digit 			                    [0-9]
-space 			                    [ ]
 hex			                        [a-fA-F0-9]
 exp			                        [Ee][+-]?{digit}+
 
 %%
 
 \n                                  { yylineno++; }
-
-#.*                                 { yylval.sValue = strdup(yytext); return (PREPROCESS); }
 
 "/*"                                { COMMENT = 1; }
 "*/"                                { COMMENT = 0; }
@@ -54,7 +51,6 @@ exp			                        [Ee][+-]?{digit}+
 \*                                  { if(!COMMENT) return (MULT); }
 \/                                  { if(!COMMENT) return (DIV); }
 \%                                  { if(!COMMENT) return (MOD); }
-\*\*                                { if(!COMMENT) return (POW); }
 =                                   { if(!COMMENT) return (ASSIGN); }
 "*="			                    { if(!COMMENT) return (MULT_ASSIGN); }
 "/="			                    { if(!COMMENT) return (DIV_ASSIGN); }
